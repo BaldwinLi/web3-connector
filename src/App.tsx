@@ -1,21 +1,17 @@
-import { useState } from "react";
 import WalletProvider from "./wallet-sdk/provider";
-import { ethers } from "ethers";
 import { sepolia } from "wagmi/chains";
+import { coinbaseWallet, ConnectionButton, metaMaskWallet } from "./wallet-sdk";
 
 const chains = [sepolia];
-
-function App() {
-  const [count, setCount] = useState(0);
-  const provider = new ethers.BrowserProvider(window.ethereum);
+const wallets = [metaMaskWallet, coinbaseWallet]
+function App() {;
   return (
     <>
-      <WalletProvider chains={chains} provider={provider} autoConnect={true} wallets={[]}>
+      <WalletProvider chains={chains} autoConnect={false} wallets={wallets}>
         <div>
-          <button onClick={() => setCount((count) => count + 1)}>
-            count is {count}
-          </button>
+          Hello World, MetaMask Wallet
         </div>
+        <ConnectionButton showBalance={true} />
       </WalletProvider>
     </>
   );
