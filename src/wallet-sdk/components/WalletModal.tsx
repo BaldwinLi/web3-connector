@@ -25,11 +25,15 @@ WalletModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center"
+      className="fixed inset-0 bg-black opacity-50 flex justify-center items-center"
+
+
+
+
       onClick={onClose}
     >
       <div
-        className="bg-white p-4 rounded-lg"
+        className="bg-white p-4 rounded-lg  box-shadow border border-gray-300 opacity-100"
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
@@ -48,9 +52,10 @@ WalletModalProps) {
                 className="w-8 h-8 rounded-md"
               />
               <div
-                className={`text-lg font-bold text-blue-500 cursor-pointer ${
-                  isConnected ? "text-gray-400 cursor-not-allowed" : ""
-                }`}
+                className={`text-lg font-bold text-blue-500 cursor-pointer flex-1 ml-3 text-center`}
+
+
+
                 onClick={async () => {
                   if (!isConnected) {
                     await onSelectWallet(wallet.id);

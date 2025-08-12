@@ -56,6 +56,7 @@ export async function connectCoinbase(): Promise<ConnectResult> {
       accounts,
       disconnect: async () => {
         await provider.removeAllListeners();
+        await coinbaseProvider.close();
       },
     };
   } catch (e: any) {

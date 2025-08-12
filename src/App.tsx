@@ -7,7 +7,7 @@ const wallets = [metaMaskWallet, coinbaseWallet]
 function App() {;
   return (
     <>
-      <WalletProvider chains={chains} autoConnect={false} wallets={wallets}>
+      <WalletProvider chains={chains} wallets={wallets}>
         <div>
           Hello World, MetaMask Wallet
         </div>

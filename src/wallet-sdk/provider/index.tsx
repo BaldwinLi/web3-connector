@@ -12,6 +12,7 @@ import type {
   WalletState,
 } from "../types";
 import { WalletModal } from "../components/WalletModal";
+import { WalletDetailModal } from "../components/WalletDetailModal";
 const walletContext = createContext<WalletContextValue>({
   connect: async (walletId: string) => {
     console.log("connect", walletId);
@@ -25,6 +26,10 @@ const walletContext = createContext<WalletContextValue>({
   },
   openModal: () => {},
   closeModal: () => {},
+  openDetailModal: () => {},
+  closeDetailModal: () => {},
+  walletIcon: "",
+  walletName: "",
   address: "",
   chainId: 0,
   isConnecting: false,
@@ -38,10 +43,12 @@ const walletContext = createContext<WalletContextValue>({
 export const WalletProvider: React.FC<WalletProviderProps> = ({
   children,
   chains,
-  autoConnect,
+  // autoConnect,
   wallets,
 }) => {
   const [state, setState] = useState<WalletState>({
+    walletIcon: "",
+    walletName: "",
     address: "",
     chainId: -1,
     isConnecting: false,
@@ -53,6 +60,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   });
 
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
 
   const walletsMap = useMemo(() => {
     return wallets.reduce((prev, cur) => {
@@ -74,17 +82,26 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         isConnecting: true,
       });
       try {
-        const { address, chainId, provider, disconnect } = await wallet.connector();
-        _disconnect = disconnect!
-        setState({
-          ...state,
-          address,
-          chainId,
-          provider,
-          isConnecting: false,
-          isConnected: true,
-          error: void 0,
-        });
+        const { address, chainId, provider, disconnect } =
+          await wallet.connector();
+        // window.addEventListener('wallet_accounts_changed', () => {
+        //   debugger
+        // })
+        if (provider && address) {
+          setState({
+            ...state,
+            walletIcon: wallet.icon,
+
+            walletName: wallet.name,
+            address,
+            chainId,
+            provider,
+            isConnecting: false,
+            isConnected: true,
+            error: void 0,
+          });
+        }
+        _disconnect = disconnect!;
       } catch (error: any) {
         setState({
           ...state,
@@ -101,6 +118,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
       // 2. 重置前端状态
       setState({
         ...state,
+        walletIcon: "",
+
+        walletName: "",
         address: "",
         chainId: -1,
         isConnecting: false,
@@ -114,7 +134,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
       if (!state.provider) {
         throw new Error("Provider not found");
       }
-      const currentChainId = await state.provider.send("eth_chainId", [chainId]);
+      const currentChainId = await state.provider.send("eth_chainId", [
+        chainId,
+      ]);
       if (Number(currentChainId) !== Number(chainId)) {
         throw new Error("ChainId not match");
       }
@@ -126,6 +148,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     },
     openModal: () => setModalOpen(true),
     closeModal: () => setModalOpen(false),
+    openDetailModal: () => setDetailModalOpen(true),
+    closeDetailModal: () => setDetailModalOpen(false),
     switchAccount: async (account: string) => {
       // 切换account
       if (!state.provider) {
@@ -145,9 +169,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   useEffect(() => {
-    if (autoConnect) {
-      value.connect(wallets[0].id);
-    }
+    value.connect(wallets[0].id);
   }, []);
   return (
     <walletContext.Provider value={value}>
@@ -160,6 +182,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         onSelectWallet={value.connect}
         isConnected={value.isConnected}
         // error={value.error}
+      />
+      <WalletDetailModal
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
       />
     </walletContext.Provider>
   );

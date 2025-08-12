@@ -14,6 +14,19 @@ interface ConnectionButtonProps {
   onAccountChange?: (account: string) => void;
 }
 
+// 常见链的货币符号映射
+const currencySymbols: Record<number, string> = {
+  1: "ETH", // 主网
+  5: "ETH", // Goerli
+  11155111: "ETH", // Sepolia
+  137: "MATIC", // Polygon
+  80001: "MATIC", // Mumbai
+  56: "BNB", // BSC
+  97: "BNB", // BSC Testnet
+  43114: "AVAX", // Avalanche
+  43113: "AVAX", // Avalanche Fuji
+};
+
 export function ConnectionButton({
   label,
   showBalance,
@@ -26,10 +39,14 @@ export function ConnectionButton({
   onBalanceChange,
 }: ConnectionButtonProps): React.ReactNode {
   const {
+    walletIcon,
+
+    walletName,
     isConnected,
-    disconnect,
     ensName,
     openModal,
+    openDetailModal,
+
     address,
     chainId,
     provider,
@@ -41,8 +58,12 @@ export function ConnectionButton({
     if (!address) {
       return;
     }
-    const balance = await provider.getBalance(address);
-    setBalance(ethers.formatEther(balance));
+    const _balance = await provider.getBalance(address);
+    const { chainId } = await provider.getNetwork();
+
+    setBalance(`${ethers.formatEther(_balance)} ${currencySymbols[chainId]}`);
+
+    // setSymbol(currencySymbol);
   }
 
   useEffect(() => {
@@ -75,30 +96,20 @@ export function ConnectionButton({
     lg: "text-lg px-6 py-3",
     sm: "text-sm px-3 py-1",
   };
-  //   async function handleConnect() {
-  //     await connect("metamask");
-  //     onConnect?.();
-  //   }
-
-  async function handleDisconnect() {
-    await disconnect();
-    onDisconnect?.();
-  }
-  const defaultClassName = " flex items-center justify-center bg-blue-500 text-white rounded-md px-4 py-2";
-
-
+  const defaultClassName =
+    " flex items-center justify-center bg-blue-500 text-white rounded-md px-4 py-2";
 
   return (
     <div>
       {isConnected ? (
         <button
           className={sizeClasses[size || "md"] + defaultClassName + className}
-
-          onClick={handleDisconnect}
+          onClick={openDetailModal}
         >
+          <img className=" w-6 h-6 rounded-full" src={walletIcon} alt="" />
+
           {label ||
-            `Disconnect ${ensName} ` +
-              (showBalance ? `| balance: ${balance}` : "")}
+            `${walletName} ` + (showBalance ? `| ${balance} ` : "")}
         </button>
       ) : (
         <button

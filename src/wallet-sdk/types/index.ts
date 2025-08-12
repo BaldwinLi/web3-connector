@@ -2,6 +2,9 @@ import type { ethers } from "ethers";
 import type { Chain } from "wagmi/chains";
 
 export interface WalletState {
+  walletIcon: string;
+
+  walletName: string;
   address?: string;
   chainId?: number;
   isConnecting: boolean;
@@ -15,10 +18,12 @@ export interface WalletState {
 export interface WalletContextValue extends WalletState {
   connect: (walletId: string) => Promise<void>;
   disconnect: () => Promise<void>;
-  switchChain: (chainId: string) => Promise<void>; 
+  switchChain: (chainId: string) => Promise<void>;
   switchAccount: (account: string) => Promise<void>;
   openModal: () => void;
   closeModal: () => void;
+  openDetailModal: () => void;
+  closeDetailModal: () => void;
 }
 
 // export interface Chain {
@@ -40,7 +45,7 @@ export interface WalletProviderProps {
   children: React.ReactNode;
   chains: Chain[];
   wallets: Wallet[];
-  autoConnect?: boolean;
+  // autoConnect?: boolean;
   provider?: any;
 }
 
@@ -51,7 +56,6 @@ export interface ConnectResult {
   signer?: ethers.Signer;
   provider: any;
   disconnect?: () => Promise<void>;
-
 }
 
 export interface Wallet {
