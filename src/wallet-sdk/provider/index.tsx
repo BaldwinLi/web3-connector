@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -18,7 +19,7 @@ const walletContext = createContext<WalletContextValue>({
     console.log("connect", walletId);
   },
   disconnect: async () => {},
-  switchChain: async (chainId: string) => {
+  switchChain: async (chainId: number) => {
     console.log("switchChainId", chainId);
   },
   switchAccount: async (account: string) => {
@@ -30,9 +31,9 @@ const walletContext = createContext<WalletContextValue>({
   closeDetailModal: () => {},
   walletIcon: "",
   walletName: "",
+  walletId: "",
   address: "",
   chainId: 0,
-  isConnecting: false,
   isConnected: false,
   ensName: "",
   error: undefined,
@@ -46,17 +47,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   // autoConnect,
   wallets,
 }) => {
-  const [state, setState] = useState<WalletState>({
+  const [state, setState] = useState<
+    WalletState & {
+      disconnect: () => Promise<void>;
+    }
+  >({
+    walletId: "",
     walletIcon: "",
     walletName: "",
     address: "",
     chainId: -1,
-    isConnecting: false,
     isConnected: false,
     ensName: "",
     error: void 0,
     chains,
     provider: null,
+    disconnect: async () => {},
   });
 
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -68,22 +74,38 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
       return prev;
     }, {} as Record<string, Wallet>);
   }, [wallets]);
-  let _disconnect: () => Promise<void>;
 
   const value: WalletContextValue = {
     ...state,
-    connect: async (walletId: string) => {
+    disconnect: async () => {
+      await state.disconnect?.();
+      setState({
+        ...state,
+        walletIcon: "",
+        walletId: "",
+        walletName: "",
+        address: "",
+        chainId: -1,
+        isConnected: false,
+        ensName: "",
+        error: void 0,
+      });
+    },
+    async connect(walletId: string) {
       const wallet = walletsMap[walletId];
       if (!wallet) {
         throw new Error("Wallet not found");
       }
       setState({
         ...state,
-        isConnecting: true,
       });
       try {
-        const { address, chainId, provider, disconnect } =
-          await wallet.connector();
+        const {
+          address,
+          chainId,
+          provider,
+          disconnect: _disconnect,
+        } = await wallet.connector();
         // window.addEventListener('wallet_accounts_changed', () => {
         //   debugger
         // })
@@ -91,59 +113,54 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           setState({
             ...state,
             walletIcon: wallet.icon,
-
+            walletId: wallet.id,
             walletName: wallet.name,
             address,
             chainId,
             provider,
-            isConnecting: false,
             isConnected: true,
             error: void 0,
+            disconnect: _disconnect!,
+
           });
         }
-        _disconnect = disconnect!;
       } catch (error: any) {
         setState({
           ...state,
-          isConnecting: false,
           isConnected: false,
           error,
         });
       }
     },
-    disconnect: async () => {
-      // 断开当前钱包链接
-      await _disconnect?.();
-
-      // 2. 重置前端状态
+    switchChain: async (chainId: number) => {
+      // 切换网络
       setState({
         ...state,
-        walletIcon: "",
-
-        walletName: "",
-        address: "",
-        chainId: -1,
-        isConnecting: false,
         isConnected: false,
-        ensName: "",
-        error: void 0,
       });
-    },
-    switchChain: async (chainId: string) => {
-      // 切换chainId
       if (!state.provider) {
         throw new Error("Provider not found");
       }
-      const currentChainId = await state.provider.send("eth_chainId", [
-        chainId,
-      ]);
-      if (Number(currentChainId) !== Number(chainId)) {
-        throw new Error("ChainId not match");
+      try {
+        const res = await state.provider.send("wallet_switchEthereumChain", [
+          { chainId: `0x${chainId.toString(16)}` },
+        ]);
+        console.log("####", res);
+      } catch (switchError: any) {
+        // 如果网络不存在，添加网络
+        if (switchError.code === 4902) {
+          const targetChain = chains.find((item) => item.id === chainId);
+          if (!targetChain) {
+            throw new Error("Chain not found");
+          }
+          await state.provider.send("wallet_addEthereumChain", [targetChain]);
+        } else {
+          throw new Error(switchError);
+        }
       }
-
       setState({
         ...state,
-        chainId: Number(currentChainId),
+        chainId: Number(chainId),
       });
     },
     openModal: () => setModalOpen(true),
@@ -171,6 +188,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   useEffect(() => {
     value.connect(wallets[0].id);
   }, []);
+  useEffect(() => {
+    async function handleChainChanged() {
+      await value.connect(state.walletId);
+    }
+    window.addEventListener(
+      "wallet_chain_changed",
+      handleChainChanged as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "wallet_chain_changed",
+        handleChainChanged as EventListener
+      );
+    };
+  }, [state.walletId]);
+
   return (
     <walletContext.Provider value={value}>
       {children}

@@ -2,12 +2,13 @@ import type { ethers } from "ethers";
 import type { Chain } from "wagmi/chains";
 
 export interface WalletState {
+  walletId: string;
+
   walletIcon: string;
 
   walletName: string;
   address?: string;
   chainId?: number;
-  isConnecting: boolean;
   isConnected: boolean;
   ensName?: string;
   error?: Error;
@@ -18,7 +19,7 @@ export interface WalletState {
 export interface WalletContextValue extends WalletState {
   connect: (walletId: string) => Promise<void>;
   disconnect: () => Promise<void>;
-  switchChain: (chainId: string) => Promise<void>;
+  switchChain: (chainId: number) => Promise<void>;
   switchAccount: (account: string) => Promise<void>;
   openModal: () => void;
   closeModal: () => void;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useWaller } from "../provider";
 import { ethers } from "ethers";
+import * as chains from "wagmi/chains";
 
 interface ConnectionButtonProps {
   label?: string;
@@ -13,19 +14,6 @@ interface ConnectionButtonProps {
   onBalanceChange?: (balance: string) => void;
   onAccountChange?: (account: string) => void;
 }
-
-// 常见链的货币符号映射
-const currencySymbols: Record<number, string> = {
-  1: "ETH", // 主网
-  5: "ETH", // Goerli
-  11155111: "ETH", // Sepolia
-  137: "MATIC", // Polygon
-  80001: "MATIC", // Mumbai
-  56: "BNB", // BSC
-  97: "BNB", // BSC Testnet
-  43114: "AVAX", // Avalanche
-  43113: "AVAX", // Avalanche Fuji
-};
 
 export function ConnectionButton({
   label,
@@ -40,13 +28,11 @@ export function ConnectionButton({
 }: ConnectionButtonProps): React.ReactNode {
   const {
     walletIcon,
-
     walletName,
     isConnected,
     ensName,
     openModal,
     openDetailModal,
-
     address,
     chainId,
     provider,
@@ -58,10 +44,34 @@ export function ConnectionButton({
     if (!address) {
       return;
     }
-    const _balance = await provider.getBalance(address);
-    const { chainId } = await provider.getNetwork();
+    // const network = await provider.getNetwork();
+    // const currentChainId = Number(network.chainId);
 
-    setBalance(`${ethers.formatEther(_balance)} ${currencySymbols[chainId]}`);
+    // // 检查是否匹配期望的链ID
+    // if (chainId && currentChainId !== chainId) {
+    //   console.log(`Network mismatch: expected ${chainId}, got ${currentChainId}`);
+    //   // 等待网络同步或提示用户
+    //   return;
+    // }
+    try {
+      for (const chain of Object.values(chains)) {
+        if (chain.id === chainId) {
+          const _balance = await provider.getBalance(address);
+          const { name } = await provider.getNetwork();
+          setBalance(
+            `${ethers.formatEther(_balance)} ${name} ${
+              chain.nativeCurrency.symbol
+            }`
+          );
+          break;
+        }
+      }
+    } catch (error) {
+      console.warn("getBalance error", error);
+
+    }
+
+    // setBalance(`${ethers.formatEther(_balance)} ${name} ${currencySymbols[chainId || 1] || 'ETH'}`);
 
     // setSymbol(currencySymbol);
   }
@@ -97,7 +107,7 @@ export function ConnectionButton({
     sm: "text-sm px-3 py-1",
   };
   const defaultClassName =
-    " flex items-center justify-center bg-blue-500 text-white rounded-md px-4 py-2";
+    " flex items-center justify-center bg-blue-500 text-white rounded-md px-4 py-2 cursor-pointer hover:bg-blue-600 transition-colors duration-300 outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md focus:ring-offset-blue-500 group ";
 
   return (
     <div>
@@ -106,10 +116,10 @@ export function ConnectionButton({
           className={sizeClasses[size || "md"] + defaultClassName + className}
           onClick={openDetailModal}
         >
-          <img className=" w-6 h-6 rounded-full" src={walletIcon} alt="" />
+          <img className=" w-6 h-6 rounded-full mr-2" src={walletIcon} alt="" />
 
-          {label ||
-            `${walletName} ` + (showBalance ? `| ${balance} ` : "")}
+
+          {label || `${walletName} ` + (showBalance ? `| ${balance} ` : "")}
         </button>
       ) : (
         <button
