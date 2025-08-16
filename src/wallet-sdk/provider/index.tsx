@@ -1,16 +1,16 @@
 import React, {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import type {
-  Wallet,
-  WalletContextValue,
-  WalletProviderProps,
-  WalletState,
+import {
+  WalletEvent,
+  type Wallet,
+  type WalletContextValue,
+  type WalletProviderProps,
+  type WalletState,
 } from "../types";
 import { WalletModal } from "../components/WalletModal";
 import { WalletDetailModal } from "../components/WalletDetailModal";
@@ -90,8 +90,16 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         ensName: "",
         error: void 0,
       });
+      window.removeEventListener(
+        WalletEvent.wallet_disconnected,
+        handleDisconnect
+      );
     },
     async connect(walletId: string) {
+      window.removeEventListener(
+        WalletEvent.wallet_disconnected,
+        handleDisconnect
+      );
       const wallet = walletsMap[walletId];
       if (!wallet) {
         throw new Error("Wallet not found");
@@ -121,9 +129,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
             isConnected: true,
             error: void 0,
             disconnect: _disconnect!,
-
           });
         }
+        window.addEventListener(
+          WalletEvent.wallet_disconnected,
+          handleDisconnect
+        );
       } catch (error: any) {
         setState({
           ...state,
@@ -184,6 +195,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
       });
     },
   };
+
+  function handleDisconnect() {
+    value.disconnect();
+  }
 
   useEffect(() => {
     value.connect(wallets[0].id);

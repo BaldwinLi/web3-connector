@@ -1,4 +1,4 @@
-import type { ConnectResult, Wallet } from "../types";
+import { WalletEvent, type ConnectResult, type Wallet } from "../types";
 import metamask from "../../assets/metamask.png";
 import { ethers } from "ethers";
 
@@ -47,28 +47,21 @@ async function disconnectMetamask(metamaskProvider: any): Promise<void> {
   try {
     // 1. 移除所有事件监听器
     metamaskProvider.removeAllListeners();
-
-    // 2. 尝试调用标准的断开连接方法（如果钱包支持）
-    if (metamaskProvider.disconnect) {
-      await metamaskProvider.disconnect();
-    } else if (typeof metamaskProvider.request === "function") {
-      // 尝试调用非标准的 wallet_disconnect 方法
-      try {
-        await metamaskProvider.request({ method: "wallet_disconnect" });
-      } catch (e: any) {
-        // 如果不支持此方法，忽略错误
-        console.log("Wallet does not support disconnect method: ", e);
-      }
-    }
-
-    // 3. 清除本地存储中的连接状态（如果有）
-    if (localStorage) {
-      localStorage.removeItem("metamask-connected");
-      localStorage.removeItem("metamask-address");
-    }
+    // 断开链接
+    await window.ethereum.request({
+      method: "wallet_revokePermissions",
+      params: [
+        {
+          // permission_name: {
+          //   newKey: "New Value",
+          // },
+          eth_accounts: {},
+        },
+      ],
+    });
 
     // 4. 触发断开连接事件
-    dispatchEvent(new CustomEvent("wallet_disconnected"));
+    dispatchEvent(new CustomEvent(WalletEvent.wallet_disconnected));
 
     console.log("MetaMask disconnected successfully");
   } catch (error) {
@@ -88,17 +81,27 @@ export async function connectMetamask(): Promise<ConnectResult> {
       throw new Error("未找到MetaMask钱包");
     }
 
-    // 首先检查是否已有授权账户
     let accounts = await metamaskProvider.request({
       method: "eth_accounts",
     });
+    const res = await metamaskProvider.request({
+      method: "wallet_requestPermissions",
+      params: [
+        {
+          eth_accounts: {},
+        },
+      ],
+    });
 
-    // 如果没有授权账户，则请求授权
-    if (!accounts || accounts.length === 0) {
-      accounts = await metamaskProvider.request({
-        method: "eth_requestAccounts",
-      });
+    if (res) {
+      // 如果没有授权账户，则请求授权
+      if (!accounts || accounts.length === 0) {
+        accounts = await metamaskProvider.request({
+          method: "eth_requestAccounts",
+        });
+      }
     }
+    // 首先检查是否已有授权账户
 
     if (!accounts || accounts.length === 0) {
       throw new Error("用户未授权");
@@ -118,11 +121,11 @@ export async function connectMetamask(): Promise<ConnectResult> {
     metamaskProvider.on("accountsChanged", (accounts: string[]) => {
       if (accounts.length === 0) {
         // 断开连接
-        dispatchEvent(new CustomEvent("wallet_disconnected"));
+        dispatchEvent(new CustomEvent(WalletEvent.wallet_disconnected));
       } else {
         // 连接成功
         dispatchEvent(
-          new CustomEvent("wallet_accounts_changed", {
+          new CustomEvent(WalletEvent.wallet_accounts_changed, {
             detail: {
               account: accounts,
             },
@@ -134,7 +137,7 @@ export async function connectMetamask(): Promise<ConnectResult> {
     // 监听网络变化
     metamaskProvider.on("chainChanged", (chainId: string) => {
       dispatchEvent(
-        new CustomEvent("wallet_chain_changed", {
+        new CustomEvent(WalletEvent.wallet_chain_changed, {
           detail: {
             chainId: Number(chainId),
           },

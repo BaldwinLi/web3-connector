@@ -68,3 +68,9 @@ export interface Wallet {
   installed?: boolean;
   downloadUrl?: string;
 }
+
+export enum WalletEvent {
+  wallet_disconnected = 'wallet_disconnected',
+  wallet_accounts_changed = 'wallet_accounts_changed',
+  wallet_chain_changed = 'wallet_chain_changed',
+}

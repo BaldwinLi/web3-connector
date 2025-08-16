@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import type { ConnectResult, Wallet } from "../types";
+import { WalletEvent, type ConnectResult, type Wallet } from "../types";
 import coinbase from "../../assets/coinbase.png";
 
 function isCoinbaseWalletInstalled(): boolean {
@@ -19,7 +19,7 @@ export async function connectCoinbase(): Promise<ConnectResult> {
 
     coinbaseProvider?.on?.("chainChanged", (chainId: string) => {
       dispatchEvent(
-        new CustomEvent("chainChanged", {
+        new CustomEvent(WalletEvent.wallet_chain_changed, {
           detail: {
             chainId: Number(chainId),
           },
@@ -28,7 +28,8 @@ export async function connectCoinbase(): Promise<ConnectResult> {
     });
     coinbaseProvider?.on?.("accountsChanged", (accounts: string[]) => {
       dispatchEvent(
-        new CustomEvent("accountsChanged", {
+        new CustomEvent(WalletEvent.wallet_accounts_changed, {
+
           detail: {
             accounts,
           },
@@ -38,7 +39,8 @@ export async function connectCoinbase(): Promise<ConnectResult> {
 
     coinbaseProvider?.on?.("disconnect", (error: any) => {
       dispatchEvent(
-        new CustomEvent("disconnect", {
+        new CustomEvent(WalletEvent.wallet_disconnected, {
+
           detail: {
             error,
           },
